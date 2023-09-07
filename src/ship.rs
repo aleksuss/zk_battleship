@@ -1,4 +1,4 @@
-pub use crate::battlefield::XY;
+pub use crate::battleship::XY;
 
 #[derive(Copy, Clone)]
 pub struct Ship {
@@ -9,7 +9,15 @@ pub struct Ship {
 #[derive(Copy, Clone)]
 pub struct ShipShape {
     pub dxy: XY,
-    pub size: usize,
+    pub size: u8,
+}
+
+#[derive(Copy, Clone)]
+pub struct ShipType {
+    // the size of the ship, value in range [1..4]
+    pub ship_size: u8,
+    // count of ships of this type in the field
+    pub count: u8,
 }
 
 #[allow(clippy::copy_iterator)]

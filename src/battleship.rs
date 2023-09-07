@@ -3,15 +3,20 @@ use std::ops::{Index, IndexMut};
 
 use itertools::Itertools;
 use rand::{Rng, SeedableRng};
-use rand::rngs::StdRng as SmallRng;
-// small_rng is not enabled on the Playground
+use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
 
-use crate::ship::{Ship, ShipShape};
 
 pub const FIELD_SIZE: usize = 10;
 #[rustfmt::skip]
 const DIRECTIONS: [(isize, isize); 9] = [(0, 0), (0, 1), (0, -1), (-1, 0), (1, 0), (-1, 1), (1, -1), (-1, -1), (1, 1)];
+
+pub const SHIPS_FOR_GAME: [ShipType; 4] = [
+    ShipType { ship_size: 4, count: 1 },
+    ShipType { ship_size: 3, count: 2 },
+    ShipType { ship_size: 2, count: 3 },
+    ShipType { ship_size: 1, count: 4 },
+];
 
 #[derive(Clone, PartialEq, Copy)]
 pub struct XY(pub usize, pub usize);
@@ -35,14 +40,17 @@ impl fmt::Display for CellType {
     }
 }
 
-pub struct Battlefield {
-    field: [CellType; FIELD_SIZE * FIELD_SIZE],
-    hits: Vec<XY>,
+#[derive(Clone, PartialEq, Copy)]
+pub struct Battlefield(pub [CellType; FIELD_SIZE * FIELD_SIZE]);
+
+pub struct Battleship {
+    pub field: Battlefield,
+    pub hits: Vec<XY>,
 }
 
-impl fmt::Display for Battlefield {
+impl fmt::Display for Battleship {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (index, element) in self.field.iter().enumerate() {
+        for (index, element) in self.field.0.iter().enumerate() {
             let xy = XY(index % FIELD_SIZE, index / FIELD_SIZE);
 
             // Start of line
@@ -56,21 +64,21 @@ impl fmt::Display for Battlefield {
     }
 }
 
-impl Index<XY> for Battlefield {
+impl Index<XY> for Battleship {
     type Output = CellType;
 
     fn index(&self, xy: XY) -> &CellType {
-        &self.field[xy.0 + xy.1 * FIELD_SIZE]
+        &self.field.0[xy.0 + xy.1 * FIELD_SIZE]
     }
 }
 
-impl IndexMut<XY> for Battlefield {
+impl IndexMut<XY> for Battleship {
     fn index_mut(&mut self, xy: XY) -> &mut CellType {
-        &mut self.field[xy.0 + xy.1 * FIELD_SIZE]
+        &mut self.field.0[xy.0 + xy.1 * FIELD_SIZE]
     }
 }
 
-impl Battlefield {
+impl Battleship {
     fn can_place_ship(&self, ship: Ship) -> bool {
         // I. Construct a bounding box for the placed ship.
         let bounds = 0..(FIELD_SIZE as isize);
@@ -78,18 +86,15 @@ impl Battlefield {
             // Move in every box direction.
             for direction in &DIRECTIONS {
                 // Indices cannot be negative or >= FIELD_SIZE.
-                if !bounds.contains(&(xy.0 as isize + direction.0))
-                    || !bounds.contains(&(xy.1 as isize + direction.1))
-                {
-                    continue;
-                }
-                let bounding_box_cell = self[XY(
-                    (xy.0 as isize + direction.0) as usize,
-                    (xy.1 as isize + direction.1) as usize,
-                )];
-                // If there's a ship within a bounding box, halt the loop -- we cannot place the ship here.
-                if bounding_box_cell == CellType::OCCUPIED {
-                    return false;
+                let bound_x = xy.0 as isize + direction.0;
+                let bound_y = xy.1 as isize + direction.1;
+                if bounds.contains(&bound_x) && bounds.contains(&bound_y) {
+                    let bounding_box_cell = self[XY(bound_x as usize, bound_y as usize)];
+
+                    // If there's a ship within a bounding box, halt the loop -- we cannot place the ship here.
+                    if bounding_box_cell == CellType::OCCUPIED {
+                        return false;
+                    }
                 }
             }
         }
@@ -116,7 +121,7 @@ impl Battlefield {
             .collect()
     }
 
-    fn emplace_ships(&mut self, size: usize, rng: &mut impl Rng) {
+    fn emplace_ships(&mut self, size: u8, rng: &mut impl Rng) {
         // Flip a coin to determine an alignment (horizontal / vertical).
         let dxy = if rng.gen() { XY(1, 0) } else { XY(0, 1) };
         let shape = ShipShape { dxy, size };
@@ -137,13 +142,17 @@ impl Battlefield {
     pub fn generate() -> Self {
         /* Generating the field. */
         let mut result = Self {
-            field: [CellType::EMPTY; FIELD_SIZE * FIELD_SIZE],
+            field: Battlefield([CellType::EMPTY; FIELD_SIZE * FIELD_SIZE]),
             hits: Vec::new(),
         };
-        let mut rng: SmallRng = SmallRng::from_entropy();
-        for ship_size in &[4, 3, 3, 2, 2, 2, 1, 1, 1, 1] {
-            result.emplace_ships(*ship_size, &mut rng);
+        let mut rng = StdRng::from_entropy();
+
+        for ship_type in SHIPS_FOR_GAME {
+            for _ in 0..ship_type.count {
+                result.emplace_ships(ship_type.ship_size, &mut rng);
+            }
         }
+
         result
     }
 }

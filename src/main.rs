@@ -1,15 +1,22 @@
 use std::error::Error;
 use std::io;
 
-use crate::battlefield::{Battlefield, FIELD_SIZE, XY};
+use crate::battleship::{Battleship, FIELD_SIZE, SHIPS_FOR_GAME, XY};
+use crate::zk_system::BattleshipVerification;
 
-mod ship;
-mod battlefield;
+mod battleship;
+mod zk_system;
+
 
 
 fn main() {
-    let mut field = Battlefield::generate();
+    let mut field = Battleship::generate();
     println!("{}", field);
+
+    BattleshipVerification {
+        field: field.field.clone(),
+        ships: SHIPS_FOR_GAME.to_vec(),
+    }.verify();
 
     loop {
         println!("Enter XY to fire:");
