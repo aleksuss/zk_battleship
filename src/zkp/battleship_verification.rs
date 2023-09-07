@@ -1,64 +1,27 @@
-use std::borrow::Borrow;
-
 use ark_r1cs_std::boolean::Boolean;
-use ark_r1cs_std::prelude::{AllocationMode, AllocVar, EqGadget};
+use ark_r1cs_std::prelude::{AllocVar, EqGadget};
 use ark_r1cs_std::R1CSVar;
 use ark_r1cs_std::uint8::UInt8;
-use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem, ConstraintSystemRef, Namespace, SynthesisError};
+use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem, ConstraintSystemRef, SynthesisError};
 
-use crate::battleship::{Battlefield, CellType, FIELD_SIZE};
-use crate::ship::ShipType;
+use crate::game::field::{Battlefield, FIELD_SIZE};
+use crate::game::ship::ShipType;
+use crate::zkp::types::{BattlefieldVar, ConstraintF, ShipTypeVar};
 
-pub type ConstraintF = ark_ed_on_bls12_381::Fq;
-
-pub type BattlefieldVar = [[UInt8<ConstraintF>; FIELD_SIZE]; FIELD_SIZE];
-
-impl AllocVar<Battlefield, ConstraintF> for BattlefieldVar {
-    fn new_variable<T: Borrow<Battlefield>>(cs: impl Into<Namespace<ConstraintF>>, f: impl FnOnce() -> Result<T, SynthesisError>, mode: AllocationMode) -> Result<Self, SynthesisError> {
-        let cs = cs.into();
-        f().and_then(|v| {
-            let field = v.borrow().0;
-            let row = [(); FIELD_SIZE].map(|_| UInt8::constant(0));
-            let mut result = [(); FIELD_SIZE].map(|_| row.clone());
-
-            for (i, cell) in field.into_iter().enumerate() {
-                let value = if cell == CellType::OCCUPIED { 1 } else { 0 };
-                let x = i % FIELD_SIZE;
-                let y = i / FIELD_SIZE;
-                result[x][y] = UInt8::new_variable(cs.clone(), || Ok(value), mode)?;
-            }
-            Ok(result)
-        })
-    }
-}
-
-pub struct ShipTypeVar {
-    ship_size: UInt8<ConstraintF>,
-    count: UInt8<ConstraintF>,
-}
-
-impl AllocVar<ShipType, ConstraintF> for ShipTypeVar {
-    fn new_variable<T: Borrow<ShipType>>(cs: impl Into<Namespace<ConstraintF>>, f: impl FnOnce() -> Result<T, SynthesisError>, mode: AllocationMode) -> Result<Self, SynthesisError> {
-        let cs = cs.into();
-        f().and_then(|v| {
-            let ship_type = v.borrow();
-            let ship_size = UInt8::new_variable(cs.clone(), || Ok(ship_type.ship_size), mode)?;
-            let count = UInt8::new_variable(cs.clone(), || Ok(ship_type.count), mode)?;
-            Ok(Self { ship_size, count })
-        })
-    }
-}
-
+/// ZK-SNARKS circuit implementation for the Battleship game.
+/// It takes a list of ships as a public input and verifies the correctness of their presence
+/// in the battle field provided by the prover as a private input. I.e. it verifies that the field
+/// was set according to the game rules without exposing the field information
 pub struct BattleshipVerification {
-    // These are the public inputs to the circuit.
+    /// The public inputs to the circuit.
     pub ships: Vec<ShipType>,
 
-    // There are the private inputs to the circuit i.e. witness
+    /// The private inputs to the circuit i.e. witness
     pub field: Battlefield,
 }
 
 impl BattleshipVerification {
-    pub fn verify(self) {
+    pub fn verify_cs(self) {
         println!("Checking a correctness of the battleship field...");
         let cs = ConstraintSystem::new_ref();
         self.generate_constraints(cs.clone()).unwrap();
@@ -171,24 +134,30 @@ fn has_neighbors(field: &BattlefieldVar, x: usize, y: usize) -> Result<bool, Syn
     return Ok(false);
 }
 
-#[test]
-fn battleship_constraints_correctness() {
-    let mut field = [CellType::EMPTY; FIELD_SIZE * FIELD_SIZE];
-    // 4 ship-1
-    field[00] = CellType::OCCUPIED;
-    field[55] = CellType::OCCUPIED;
-    field[17] = CellType::OCCUPIED;
-    field[99] = CellType::OCCUPIED;
+#[cfg(test)]
+mod tests {
+    use crate::game::field::{Battlefield, CellType, FIELD_SIZE};
+    use crate::game::ship::ShipType;
+    use crate::zkp::battleship_verification::BattleshipVerification;
 
-    // 1 ship-2
-    field[39] = CellType::OCCUPIED;
-    field[49] = CellType::OCCUPIED;
+    #[test]
+    fn battleship_constraints_correctness() {
+        let mut field = [CellType::EMPTY; FIELD_SIZE * FIELD_SIZE];
+        // 4 ship-1
+        field[00] = CellType::OCCUPIED;
+        field[55] = CellType::OCCUPIED;
+        field[17] = CellType::OCCUPIED;
+        field[99] = CellType::OCCUPIED;
 
+        // 1 ship-2
+        field[39] = CellType::OCCUPIED;
+        field[49] = CellType::OCCUPIED;
 
-    let circuit = BattleshipVerification {
-        field: Battlefield(field),
-        ships: vec![ShipType { ship_size: 1, count: 4 }, ShipType { ship_size: 2, count: 1 }],
-    };
+        let circuit = BattleshipVerification {
+            field: Battlefield(field),
+            ships: vec![ShipType { ship_size: 1, count: 4 }, ShipType { ship_size: 2, count: 1 }],
+        };
 
-    circuit.verify();
+        circuit.verify_cs();
+    }
 }

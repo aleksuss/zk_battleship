@@ -1,12 +1,12 @@
 use std::error::Error;
 use std::io;
 
-use crate::battleship::{Battleship, FIELD_SIZE, SHIPS_FOR_GAME, XY};
-use crate::zk_system::BattleshipVerification;
+use crate::game::battleship::{Battleship, SHIPS_FOR_GAME};
+use crate::game::field::{FIELD_SIZE, XY};
+use crate::zkp::battleship_verification::BattleshipVerification;
 
-mod battleship;
-mod zk_system;
-
+mod zkp;
+mod game;
 
 
 fn main() {
@@ -16,13 +16,13 @@ fn main() {
     BattleshipVerification {
         field: field.field.clone(),
         ships: SHIPS_FOR_GAME.to_vec(),
-    }.verify();
+    }.verify_cs();
 
     loop {
         println!("Enter XY to fire:");
         match read_stdin_xy() {
             Ok(xy) => {
-                field.fire(xy);
+                field.shoot(xy);
                 println!("{}", field);
             }
 

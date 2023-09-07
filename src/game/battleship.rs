@@ -5,12 +5,18 @@ use itertools::Itertools;
 use rand::{Rng, SeedableRng};
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
+use crate::game::field::{Battlefield, CellType, FIELD_SIZE, XY};
+use crate::game::ship::{Ship, ShipShape, ShipType};
 
+/// Battleship Game
+pub struct Battleship {
+    /// field with ships for the game
+    pub field: Battlefield,
+    /// array with field shoots
+    pub shoots: Vec<XY>,
+}
 
-pub const FIELD_SIZE: usize = 10;
-#[rustfmt::skip]
-const DIRECTIONS: [(isize, isize); 9] = [(0, 0), (0, 1), (0, -1), (-1, 0), (1, 0), (-1, 1), (1, -1), (-1, -1), (1, 1)];
-
+/// A list of ships required by the game rules
 pub const SHIPS_FOR_GAME: [ShipType; 4] = [
     ShipType { ship_size: 4, count: 1 },
     ShipType { ship_size: 3, count: 2 },
@@ -18,35 +24,8 @@ pub const SHIPS_FOR_GAME: [ShipType; 4] = [
     ShipType { ship_size: 1, count: 4 },
 ];
 
-#[derive(Clone, PartialEq, Copy)]
-pub struct XY(pub usize, pub usize);
-
-#[derive(Clone, PartialEq, Copy)]
-pub enum CellType {
-    EMPTY,
-    OCCUPIED,
-}
-
-impl fmt::Display for CellType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::EMPTY => "🌊",
-                Self::OCCUPIED => "🛳️",
-            }
-        )
-    }
-}
-
-#[derive(Clone, PartialEq, Copy)]
-pub struct Battlefield(pub [CellType; FIELD_SIZE * FIELD_SIZE]);
-
-pub struct Battleship {
-    pub field: Battlefield,
-    pub hits: Vec<XY>,
-}
+#[rustfmt::skip]
+const DIRECTIONS: [(isize, isize); 9] = [(0, 0), (0, 1), (0, -1), (-1, 0), (1, 0), (-1, 1), (1, -1), (-1, -1), (1, 1)];
 
 impl fmt::Display for Battleship {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -58,7 +37,7 @@ impl fmt::Display for Battleship {
                 writeln!(f)?;
             }
 
-            if self.hits.contains(&xy) { write!(f, "{}", element)?; } else { write!(f, "⬜️")?; }
+            if self.shoots.contains(&xy) { write!(f, "{}", element)?; } else { write!(f, "⬜️")?; }
         }
         Ok(())
     }
@@ -135,15 +114,15 @@ impl Battleship {
         }
     }
 
-    pub fn fire(&mut self, value: XY) {
-        self.hits.push(value)
+    pub fn shoot(&mut self, value: XY) {
+        self.shoots.push(value)
     }
 
     pub fn generate() -> Self {
         /* Generating the field. */
         let mut result = Self {
             field: Battlefield([CellType::EMPTY; FIELD_SIZE * FIELD_SIZE]),
-            hits: Vec::new(),
+            shoots: Vec::new(),
         };
         let mut rng = StdRng::from_entropy();
 

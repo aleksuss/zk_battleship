@@ -1,23 +1,30 @@
-pub use crate::battleship::XY;
+use crate::game::field::XY;
 
+/// Ship type for the game
 #[derive(Copy, Clone)]
-pub struct Ship {
-    pub xy: XY,
-    pub shape: ShipShape,
+pub struct ShipType {
+    /// The size of the ship, value in range [1..4]
+    pub ship_size: u8,
+    /// Count of ships of this type in the field
+    pub count: u8,
 }
 
+/// Shape of the ship
 #[derive(Copy, Clone)]
 pub struct ShipShape {
+    /// Ship's direction i.e. horizontal/vertical
     pub dxy: XY,
+    /// Ship's size
     pub size: u8,
 }
 
+/// A ship with it's coordinates in the game field
 #[derive(Copy, Clone)]
-pub struct ShipType {
-    // the size of the ship, value in range [1..4]
-    pub ship_size: u8,
-    // count of ships of this type in the field
-    pub count: u8,
+pub struct Ship {
+    /// Coordinates of the ship start
+    pub xy: XY,
+    /// Shape of the ship
+    pub shape: ShipShape,
 }
 
 #[allow(clippy::copy_iterator)]
