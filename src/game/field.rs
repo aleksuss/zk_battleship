@@ -4,18 +4,25 @@ use std::fmt;
 pub const FIELD_SIZE: usize = 10;
 
 /// Fixed size matrix that represents the game field
-#[derive(Clone, PartialEq, Copy)]
+#[derive(Clone, PartialEq, Eq, Copy)]
 pub struct Battlefield(pub [CellType; FIELD_SIZE * FIELD_SIZE]);
 
+impl Default for Battlefield {
+    fn default() -> Self {
+        Self([CellType::Empty; FIELD_SIZE * FIELD_SIZE])
+    }
+}
+
 /// Represents coordinates inside the field
-#[derive(Clone, PartialEq, Copy)]
+#[derive(Clone, PartialEq, Eq, Copy)]
 pub struct XY(pub usize, pub usize);
 
 /// A type of the cell in the game field
-#[derive(Clone, PartialEq, Copy)]
+#[derive(Default, Clone, PartialEq, Eq, Copy)]
 pub enum CellType {
-    EMPTY,
-    OCCUPIED,
+    #[default]
+    Empty,
+    Occupied,
 }
 
 impl fmt::Display for CellType {
@@ -24,8 +31,8 @@ impl fmt::Display for CellType {
             f,
             "{}",
             match self {
-                Self::EMPTY => "🌊",
-                Self::OCCUPIED => "🛳️",
+                Self::Empty => "🌊",
+                Self::Occupied => "🛳️",
             }
         )
     }

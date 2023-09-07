@@ -1,14 +1,15 @@
 use std::fmt;
 use std::ops::{Index, IndexMut};
 
-use itertools::Itertools;
-use rand::{Rng, SeedableRng};
-use rand::rngs::StdRng;
-use rand::seq::SliceRandom;
 use crate::game::field::{Battlefield, CellType, FIELD_SIZE, XY};
 use crate::game::ship::{Ship, ShipShape, ShipType};
+use itertools::Itertools;
+use rand::rngs::StdRng;
+use rand::seq::SliceRandom;
+use rand::{Rng, SeedableRng};
 
 /// Battleship Game
+#[derive(Default)]
 pub struct Battleship {
     /// field with ships for the game
     pub field: Battlefield,
@@ -18,10 +19,22 @@ pub struct Battleship {
 
 /// A list of ships required by the game rules
 pub const SHIPS_FOR_GAME: [ShipType; 4] = [
-    ShipType { ship_size: 4, count: 1 },
-    ShipType { ship_size: 3, count: 2 },
-    ShipType { ship_size: 2, count: 3 },
-    ShipType { ship_size: 1, count: 4 },
+    ShipType {
+        ship_size: 4,
+        count: 1,
+    },
+    ShipType {
+        ship_size: 3,
+        count: 2,
+    },
+    ShipType {
+        ship_size: 2,
+        count: 3,
+    },
+    ShipType {
+        ship_size: 1,
+        count: 4,
+    },
 ];
 
 #[rustfmt::skip]
@@ -37,7 +50,11 @@ impl fmt::Display for Battleship {
                 writeln!(f)?;
             }
 
-            if self.shoots.contains(&xy) { write!(f, "{}", element)?; } else { write!(f, "⬜️")?; }
+            if self.shoots.contains(&xy) {
+                write!(f, "{}", element)?;
+            } else {
+                write!(f, "⬜️")?;
+            }
         }
         Ok(())
     }
@@ -67,11 +84,12 @@ impl Battleship {
                 // Indices cannot be negative or >= FIELD_SIZE.
                 let bound_x = xy.0 as isize + direction.0;
                 let bound_y = xy.1 as isize + direction.1;
+
                 if bounds.contains(&bound_x) && bounds.contains(&bound_y) {
                     let bounding_box_cell = self[XY(bound_x as usize, bound_y as usize)];
 
                     // If there's a ship within a bounding box, halt the loop -- we cannot place the ship here.
-                    if bounding_box_cell == CellType::OCCUPIED {
+                    if bounding_box_cell == CellType::Occupied {
                         return false;
                     }
                 }
@@ -85,7 +103,7 @@ impl Battleship {
                 return false;
             }
             let current_cell = self[xy];
-            if let CellType::OCCUPIED = current_cell {
+            if current_cell == CellType::Occupied {
                 return false;
             }
         }
@@ -110,7 +128,7 @@ impl Battleship {
         let ship = Ship { xy, shape };
         // Place a ship!
         for xy in ship {
-            self[xy] = CellType::OCCUPIED;
+            self[xy] = CellType::Occupied;
         }
     }
 
@@ -120,10 +138,7 @@ impl Battleship {
 
     pub fn generate() -> Self {
         /* Generating the field. */
-        let mut result = Self {
-            field: Battlefield([CellType::EMPTY; FIELD_SIZE * FIELD_SIZE]),
-            shoots: Vec::new(),
-        };
+        let mut result = Self::default();
         let mut rng = StdRng::from_entropy();
 
         for ship_type in SHIPS_FOR_GAME {

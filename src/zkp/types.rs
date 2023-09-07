@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 
-use ark_r1cs_std::alloc::{AllocationMode, AllocVar};
+use ark_r1cs_std::alloc::{AllocVar, AllocationMode};
 use ark_r1cs_std::uint8::UInt8;
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
@@ -20,7 +20,11 @@ pub struct ShipTypeVar {
 }
 
 impl AllocVar<Battlefield, ConstraintF> for BattlefieldVar {
-    fn new_variable<T: Borrow<Battlefield>>(cs: impl Into<Namespace<ConstraintF>>, f: impl FnOnce() -> Result<T, SynthesisError>, mode: AllocationMode) -> Result<Self, SynthesisError> {
+    fn new_variable<T: Borrow<Battlefield>>(
+        cs: impl Into<Namespace<ConstraintF>>,
+        f: impl FnOnce() -> Result<T, SynthesisError>,
+        mode: AllocationMode,
+    ) -> Result<Self, SynthesisError> {
         let cs = cs.into();
         f().and_then(|v| {
             let field = v.borrow().0;
@@ -28,7 +32,7 @@ impl AllocVar<Battlefield, ConstraintF> for BattlefieldVar {
             let mut result = [(); FIELD_SIZE].map(|_| row.clone());
 
             for (i, cell) in field.into_iter().enumerate() {
-                let value = if cell == CellType::OCCUPIED { 1 } else { 0 };
+                let value = u8::from(cell == CellType::Occupied);
                 let x = i % FIELD_SIZE;
                 let y = i / FIELD_SIZE;
                 result[x][y] = UInt8::new_variable(cs.clone(), || Ok(value), mode)?;
@@ -39,8 +43,13 @@ impl AllocVar<Battlefield, ConstraintF> for BattlefieldVar {
 }
 
 impl AllocVar<ShipType, ConstraintF> for ShipTypeVar {
-    fn new_variable<T: Borrow<ShipType>>(cs: impl Into<Namespace<ConstraintF>>, f: impl FnOnce() -> Result<T, SynthesisError>, mode: AllocationMode) -> Result<Self, SynthesisError> {
+    fn new_variable<T: Borrow<ShipType>>(
+        cs: impl Into<Namespace<ConstraintF>>,
+        f: impl FnOnce() -> Result<T, SynthesisError>,
+        mode: AllocationMode,
+    ) -> Result<Self, SynthesisError> {
         let cs = cs.into();
+
         f().and_then(|v| {
             let ship_type = v.borrow();
             let ship_size = UInt8::new_variable(cs.clone(), || Ok(ship_type.ship_size), mode)?;
